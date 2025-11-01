@@ -1,0 +1,8 @@
+   1: # syntax=docker/dockerfile:1
+   2: FROM node:20-alpine
+   3: WORKDIR /app
+   4: COPY package.json package-lock.json* .npmrc* ./
+   5: RUN npm install --no-audit --no-fund
+   6: COPY src ./src
+   7: EXPOSE 8080
+   8: CMD ["node", "src/server.js"]

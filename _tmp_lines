@@ -1,0 +1,19 @@
+   1: "use strict";
+   2: var __importDefault = (this && this.__importDefault) || function (mod) {{
+   3:     return (mod && mod.__esModule) ? mod : {{ "default": mod }};
+   4: }};
+   5: Object.defineProperty(exports, "__esModule", {{ value: true }});
+   6: const env_1 = require("./config/env");
+   7: const db_1 = require("./config/db");
+   8: const logger_1 = require("./config/logger");
+   9: const app_1 = __importDefault(require("./app"));
+  10: const index_1 = require("./jobs/index");
+  11: async function main() {{
+  12:     await (0, db_1.connectDB)();
+  13:     (0, index_1.startJobs)();
+  14:     app_1.default.listen(env_1.env.PORT, () => logger_1.logger.info(`API listening on :${{env_1.env.PORT}}`));
+  15: }}
+  16: main().catch((err) => {{
+  17:     logger_1.logger.error({{ err }}, 'Failed to start');
+  18:     process.exit(1);
+  19: }});

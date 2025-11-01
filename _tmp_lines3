@@ -1,0 +1,53 @@
+   1: "use strict";
+   2: var __importDefault = (this && this.__importDefault) || function (mod) {{
+   3:     return (mod && mod.__esModule) ? mod : {{ "default": mod }};
+   4: }};
+   5: Object.defineProperty(exports, "__esModule", {{ value: true }});
+   6: const express_1 = __importDefault(require("express"));
+   7: const helmet_1 = __importDefault(require("helmet"));
+   8: const cors_1 = __importDefault(require("cors"));
+   9: const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+  10: const error_1 = require("./middleware/error");
+  11: const auth_routes_1 = __importDefault(require("./modules/auth/auth.routes"));
+  12: const users_routes_1 = __importDefault(require("./modules/users/users.routes"));
+  13: const wallet_routes_1 = __importDefault(require("./modules/wallet/wallet.routes"));
+  14: const calls_routes_1 = __importDefault(require("./modules/calls/calls.routes"));
+  15: const payments_routes_1 = __importDefault(require("./modules/payments/payments.routes"));
+  16: const admin_routes_1 = __importDefault(require("./modules/admin/admin.routes"));
+  17: const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
+  18: const fs_1 = __importDefault(require("fs"));
+  19: const path_1 = __importDefault(require("path"));
+  20: const yaml_1 = __importDefault(require("yaml"));
+  21: const app = (0, express_1.default)();
+  22: // Behind a proxy on Render; ensure correct IPs and secure headers
+  23: app.set('trust proxy', 1);
+  24: // Relax CORP for API responses to avoid cross-origin fetch issues
+  25: app.use((0, helmet_1.default)({{ crossOriginResourcePolicy: false }}));
+  26: // Explicit CORS setup for broad, global access (Flutter Web friendly)
+  27: const corsOptions = {{
+  28:     origin: true,
+  29:     credentials: true,
+  30:     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  31:     allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+  32:     preflightContinue: false,
+  33:     optionsSuccessStatus: 204,
+  34: }};
+  35: app.use((0, cors_1.default)(corsOptions));
+  36: app.options('*', (0, cors_1.default)(corsOptions));
+  37: app.use(express_1.default.json({{ limit: '1mb' }}));
+  38: app.use((0, express_rate_limit_1.default)({{ windowMs: 60000, max: 120 }}));
+  39: app.get('/health', (_req, res) => res.json({{ ok: true }}));
+  40: app.use('/auth', auth_routes_1.default);
+  41: app.use('/users', users_routes_1.default);
+  42: app.use('/', wallet_routes_1.default); // /me/withdraw, /wallet/*
+  43: app.use('/', calls_routes_1.default); // /calls
+  44: app.use('/', payments_routes_1.default); // /payments/*
+  45: app.use('/', admin_routes_1.default);
+  46: const openapiPath = path_1.default.join(process.cwd(), 'docs', 'openapi.yaml');
+  47: if (fs_1.default.existsSync(openapiPath)) {{
+  48:     const file = fs_1.default.readFileSync(openapiPath, 'utf8');
+  49:     const spec = yaml_1.default.parse(file);
+  50:     app.use('/docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(spec));
+  51: }}
+  52: app.use(error_1.errorHandler);
+  53: exports.default = app;

@@ -19,8 +19,21 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const yaml_1 = __importDefault(require("yaml"));
 const app = (0, express_1.default)();
-app.use((0, helmet_1.default)());
-app.use((0, cors_1.default)());
+// Behind a proxy on Render; ensure correct IPs and secure headers
+app.set('trust proxy', 1);
+// Relax CORP for API responses to avoid cross-origin fetch issues
+app.use((0, helmet_1.default)({ crossOriginResourcePolicy: false }));
+// Explicit CORS setup for broad, global access (Flutter Web friendly)
+const corsOptions = {
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+};
+app.use((0, cors_1.default)(corsOptions));
+app.options('*', (0, cors_1.default)(corsOptions));
 app.use(express_1.default.json({ limit: '1mb' }));
 app.use((0, express_rate_limit_1.default)({ windowMs: 60000, max: 120 }));
 app.get('/health', (_req, res) => res.json({ ok: true }));
