@@ -1,0 +1,88 @@
+openapi: 3.1.0
+info:
+  title: Stock Advisory + MLM Backend
+  version: 0.1.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Healthcheck
+      responses:
+        '200': { description: OK }
+  /auth/request-otp:
+    post:
+      summary: Request login OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { email: { type: string, format: email } }
+              required: [email]
+      responses:
+        '200': { description: Sent }
+  /auth/verify-otp:
+    post:
+      summary: Verify OTP and issue tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                code: { type: string }
+              required: [email, code]
+      responses:
+        '200': { description: Tokens }
+  /calls:
+    get:
+      summary: List advisory calls with unlocked flag
+      responses:
+        '200': { description: OK }
+  /calls/{callId}:
+    get:
+      summary: Get a call if unlocked
+      parameters:
+        - in: path
+          name: callId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /calls/{callId}/unlock:
+    post:
+      summary: Unlock a call
+      parameters:
+        - in: path
+          name: callId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Unlocked }
+        '402': { description: Insufficient funds }
+  /payments/registration/order:
+    post:
+      summary: Create registration order (₹2100)
+      responses:
+        '200': { description: Order }
+  /payments/renewal/order:
+    post:
+      summary: Create renewal order (₹1000)
+      responses:
+        '200': { description: Order }
+  /payments/webhook:
+    post:
+      summary: Razorpay webhook capture
+      responses:
+        '200': { description: OK }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+

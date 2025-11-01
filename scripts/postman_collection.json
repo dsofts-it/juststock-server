@@ -1,0 +1,23 @@
+{
+  "info": {
+    "name": "Stock Advisory + MLM",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+    },
+    {
+      "name": "Auth: request OTP",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/auth/request-otp",
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"you@example.com\"\n}" },
+        "header": [{ "key": "Content-Type", "value": "application/json" }]
+      }
+    }
+  ],
+  "variable": [{ "key": "baseUrl", "value": "http://localhost:8080" }]
+}
+
