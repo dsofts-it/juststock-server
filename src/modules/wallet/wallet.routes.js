@@ -16,6 +16,26 @@ router.post('/wallet/topup/order', (0, auth_1.auth)(), (0, validate_1.validate)(
     res.json(order);
 });
 
+// Simplified wallet topup without Razorpay: first topup 2100, thereafter 1000
+router.post('/wallet/topup/simple', (0, auth_1.auth)(), async (req, res) => {
+    const user = await user_model_1.UserModel.findOne({ uid: req.user.uid }).exec();
+    if (!user)
+        return res.status(404).json({ error: 'user_not_found' });
+    const hadTopup = await walletTxn_model_1.WalletTxnModel.exists({ uid: user.uid, wallet: 'actual', reason: 'topup' });
+    const amount = hadTopup ? 1000 : 2100;
+    user.wallet.actual += amount;
+    await user.save();
+    await walletTxn_model_1.WalletTxnModel.create({
+        uid: user.uid,
+        wallet: 'actual',
+        type: 'credit',
+        amount,
+        reason: 'topup',
+        balanceAfter: user.wallet.actual,
+    });
+    return res.json({ ok: true, credited: amount, balance: user.wallet.actual, firstTopup: !hadTopup });
+});
+
 const withdrawSchema = zod_1.z.object({ body: zod_1.z.object({ amount: zod_1.z.number().int().min(100).max(1000) }) });
 router.post('/me/withdraw', (0, auth_1.auth)(), (0, validate_1.validate)(withdrawSchema), async (req, res) => {
     const { amount } = req.body;

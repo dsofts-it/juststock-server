@@ -76,6 +76,26 @@ router.get('/me', (0, auth_1.auth)(), async (req, res) => {
         includedCallsRemaining: user.includedCallsRemaining,
     });
 });
+
+// Update profile: name and phone
+const updateMeSchema = zod_1.z.object({
+    body: zod_1.z.object({
+        name: zod_1.z.string().min(1).optional(),
+        phone: zod_1.z.string().min(5).optional(),
+    }).refine((d) => typeof d.name !== 'undefined' || typeof d.phone !== 'undefined', {
+        message: 'no_changes',
+        path: ['body'],
+    }),
+});
+router.patch('/me', (0, auth_1.auth)(), (0, validate_1.validate)(updateMeSchema), async (req, res) => {
+    const user = await user_model_1.UserModel.findOne({ uid: req.user.uid }).exec();
+    if (!user)
+        return res.status(404).json({ error: 'user_not_found' });
+    if (typeof req.body.name !== 'undefined') user.name = req.body.name;
+    if (typeof req.body.phone !== 'undefined') user.phone = req.body.phone;
+    await user.save();
+    return res.json({ ok: true });
+});
 router.get('/me/tree', (0, auth_1.auth)(), async (req, res) => {
     // Simplified: return direct referrals only, with pagination
     const page = parseInt(String(req.query.page || '1'));

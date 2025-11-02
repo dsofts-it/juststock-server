@@ -27,6 +27,7 @@ paths:
                 password: { type: string, minLength: 8 }
                 confirmPassword: { type: string, minLength: 8 }
                 mobile: { type: string }
+                referralCode: { type: string, description: Optional referrer code }
               required: [name, email, password, confirmPassword, mobile]
       responses:
         '201': { description: Tokens }
@@ -92,9 +93,41 @@ paths:
       responses:
         '200': { description: Tokens }
 
+  /auth/forgot-password:
+    post:
+      summary: Send password reset OTP to email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { email: { type: string, format: email } }
+              required: [email]
+      responses:
+        '200': { description: Sent }
+
+  /auth/reset-password:
+    post:
+      summary: Reset password using OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+                code: { type: string }
+                newPassword: { type: string, minLength: 8 }
+                confirmPassword: { type: string, minLength: 8 }
+              required: [email, code, newPassword, confirmPassword]
+      responses:
+        '200': { description: OK }
+
   /calls:
     get:
-      summary: List advisory calls with unlocked flag
+      summary: List calls; body only when unlocked
       responses:
         '200': { description: OK }
 
@@ -103,6 +136,35 @@ paths:
       summary: Latest one message per category (NIFTY, BANKNIFTY, SENSEX, COMMODITY, OTHERS)
       responses:
         '200': { description: OK }
+
+  /messages/latest5:
+    get:
+      summary: Alias of /calls/latest5
+      responses:
+        '200': { description: OK }
+
+  /messages/latest/{category}:
+    get:
+      summary: Latest message in a category (body only if unlocked)
+      parameters:
+        - in: path
+          name: category
+          required: true
+          schema: { type: string, enum: [NIFTY, BANKNIFTY, SENSEX, COMMODITY, OTHERS] }
+      responses:
+        '200': { description: OK }
+
+  /messages/latest/{category}/unlock:
+    post:
+      summary: Unlock latest message in a category by paying from wallet
+      parameters:
+        - in: path
+          name: category
+          required: true
+          schema: { type: string, enum: [NIFTY, BANKNIFTY, SENSEX, COMMODITY, OTHERS] }
+      responses:
+        '200': { description: Unlocked }
+        '402': { description: Insufficient funds }
 
   /calls/{callId}:
     get:
@@ -127,9 +189,44 @@ paths:
         '200': { description: Unlocked }
         '402': { description: Insufficient funds }
 
+  /admin/messages/{category}:
+    post:
+      summary: Admin create latest message for a category
+      parameters:
+        - in: path
+          name: category
+          required: true
+          schema: { type: string, enum: [NIFTY, BANKNIFTY, SENSEX, COMMODITY, OTHERS] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                body: { type: string }
+                price: { type: integer, minimum: 0, default: 116 }
+              required: [title, body]
+      responses:
+        '200': { description: Created }
+
   /users/me:
     get:
       summary: Get current user profile
+      responses:
+        '200': { description: OK }
+    patch:
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                phone: { type: string }
       responses:
         '200': { description: OK }
 
@@ -171,6 +268,12 @@ paths:
               required: [amount]
       responses:
         '200': { description: Order }
+
+  /wallet/topup/simple:
+    post:
+      summary: Simplified wallet topup (2100 for first, then 1000)
+      responses:
+        '200': { description: OK }
 
   /me/history/wallet:
     get:

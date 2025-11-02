@@ -16,7 +16,7 @@ const user_model_1 = require("../users/user.model");
 const id_1 = require("../../utils/id");
 const router = (0, express_1.Router)();
 
-// New: manual signup with name, email, password, confirmPassword, mobile
+// New: manual signup with name, email, password, confirmPassword, mobile, optional referralCode
 const signupSchema = zod_1.z.object({
     body: zod_1.z.object({
         name: zod_1.z.string().min(1),
@@ -24,16 +24,25 @@ const signupSchema = zod_1.z.object({
         password: zod_1.z.string().min(8),
         confirmPassword: zod_1.z.string().min(8),
         mobile: zod_1.z.string().min(8),
+        referralCode: zod_1.z.string().min(1).optional(),
     }).refine((d) => d.password === d.confirmPassword, { path: ['confirmPassword'], message: 'password_mismatch' }),
 });
 
 router.post('/signup', (0, validate_1.validate)(signupSchema), async (req, res) => {
-    const { name, email, password, mobile } = req.body;
+    const { name, email, password, mobile, referralCode: referralInput } = req.body;
     const lower = email.toLowerCase();
     const existing = await user_model_1.UserModel.findOne({ email: lower }).lean();
     if (existing)
         return res.status(409).json({ error: 'email_exists' });
     const passwordHash = await argon2_1.default.hash(password);
+    let parentUid = undefined;
+    if (referralInput) {
+        const parent = await user_model_1.UserModel.findOne({ referralCode: referralInput }).lean();
+        if (parent)
+            parentUid = parent.uid;
+        else
+            return res.status(400).json({ error: 'invalid_referral_code' });
+    }
     const user = await user_model_1.UserModel.create({
         uid: (0, id_1.genId)('u_'),
         name,
@@ -42,11 +51,15 @@ router.post('/signup', (0, validate_1.validate)(signupSchema), async (req, res) 
         passwordHash,
         role: 'user',
         referralCode: (0, id_1.genId)('ref_'),
+        parentUid,
         wallet: { commission: 0, actual: 0 },
         includedCallsRemaining: 17,
         directReferralsCount: 0,
         status: 'inactive',
     });
+    if (parentUid) {
+        await user_model_1.UserModel.updateOne({ uid: parentUid }, { $inc: { directReferralsCount: 1 } }).exec();
+    }
     const access = jsonwebtoken_1.default.sign({ uid: user.uid }, env_1.env.JWT_SECRET, { expiresIn: '15m' });
     const refresh = jsonwebtoken_1.default.sign({ uid: user.uid }, env_1.env.JWT_REFRESH_SECRET, { expiresIn: '30d' });
     res.status(201).json({ accessToken: access, refreshToken: refresh });
@@ -109,6 +122,18 @@ router.post('/request-otp', (0, validate_1.validate)(requestOtpSchema), async (r
     await (0, mailer_1.getMailer)().sendMail({ to: email, subject: 'Your OTP', text: `Your OTP is ${code}` });
     res.json({ ok: true });
 });
+
+// Forgot password: send reset OTP to email
+const forgotPwdSchema = zod_1.z.object({ body: zod_1.z.object({ email: zod_1.z.string().email() }) });
+router.post('/forgot-password', (0, validate_1.validate)(forgotPwdSchema), async (req, res) => {
+    const { email } = req.body;
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeHash = await argon2_1.default.hash(code);
+    const expiresAt = (0, date_fns_1.addMinutes)(new Date(), env_1.env.OTP_EXP_MIN);
+    await otp_model_1.OtpModel.create({ email: email.toLowerCase(), codeHash, expiresAt });
+    await (0, mailer_1.getMailer)().sendMail({ to: email, subject: 'Password Reset Code', text: `Your reset code is ${code}` });
+    res.json({ ok: true });
+});
 const verifyOtpSchema = zod_1.z.object({
     body: zod_1.z.object({ email: zod_1.z.string().email(), code: zod_1.z.string().length(6) }),
 });
@@ -138,6 +163,33 @@ router.post('/verify-otp', (0, validate_1.validate)(verifyOtpSchema), async (req
     const access = jsonwebtoken_1.default.sign({ uid: user.uid }, env_1.env.JWT_SECRET, { expiresIn: '15m' });
     const refresh = jsonwebtoken_1.default.sign({ uid: user.uid }, env_1.env.JWT_REFRESH_SECRET, { expiresIn: '30d' });
     res.json({ accessToken: access, refreshToken: refresh });
+});
+
+// Reset password with OTP
+const resetPwdSchema = zod_1.z.object({
+    body: zod_1.z.object({
+        email: zod_1.z.string().email(),
+        code: zod_1.z.string().length(6),
+        newPassword: zod_1.z.string().min(8),
+        confirmPassword: zod_1.z.string().min(8),
+    }).refine((d) => d.newPassword === d.confirmPassword, { path: ['confirmPassword'], message: 'password_mismatch' }),
+});
+router.post('/reset-password', (0, validate_1.validate)(resetPwdSchema), async (req, res) => {
+    const { email, code, newPassword } = req.body;
+    const otp = await otp_model_1.OtpModel.findOne({ email: email.toLowerCase() }).sort({ expiresAt: -1 }).exec();
+    if (!otp || otp.consumedAt || otp.expiresAt < new Date())
+        return res.status(400).json({ error: 'invalid_otp' });
+    const ok = await argon2_1.default.verify(otp.codeHash, code);
+    if (!ok)
+        return res.status(400).json({ error: 'invalid_otp' });
+    otp.consumedAt = new Date();
+    await otp.save();
+    const user = await user_model_1.UserModel.findOne({ email: email.toLowerCase() }).exec();
+    if (!user)
+        return res.status(404).json({ error: 'user_not_found' });
+    user.passwordHash = await argon2_1.default.hash(newPassword);
+    await user.save();
+    return res.json({ ok: true });
 });
 const refreshSchema = zod_1.z.object({ body: zod_1.z.object({ refreshToken: zod_1.z.string().min(1) }) });
 router.post('/refresh', (0, validate_1.validate)(refreshSchema), async (req, res) => {
