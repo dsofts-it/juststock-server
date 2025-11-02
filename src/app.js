@@ -25,10 +25,9 @@ app.set('trust proxy', 1);
 app.use((0, helmet_1.default)({ crossOriginResourcePolicy: false }));
 // Explicit CORS setup for broad, global access (Flutter Web friendly)
 const corsOptions = {
-    origin: true,
-    credentials: true,
+    origin: '*',
+    credentials: false,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
 };
