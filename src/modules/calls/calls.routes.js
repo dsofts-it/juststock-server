@@ -114,3 +114,30 @@ router.get('/history/calls', (0, auth_1.auth)(), async (req, res) => {
     res.json({ page, limit, data });
 });
 exports.default = router;
+
+// Latest one message per major category
+router.get('/calls/latest5', (0, auth_1.auth)(), async (req, res) => {
+    const categories = ['NIFTY', 'BANKNIFTY', 'SENSEX', 'COMMODITY', 'OTHERS'];
+    const latest = await Promise.all(
+        categories.map((cat) => advisoryCall_model_1.AdvisoryCallModel.findOne({ category: cat })
+            .sort({ postedAt: -1 })
+            .lean())
+    );
+    const calls = latest.filter(Boolean);
+    const ids = calls.map((c) => c.callId);
+    const ents = await callEntitlement_model_1.CallEntitlementModel.find({ uid: req.user.uid, callId: { $in: ids } })
+        .select('callId')
+        .lean();
+    const entSet = new Set(ents.map((e) => e.callId));
+    const result = {};
+    categories.forEach((cat, i) => {
+        const c = latest[i];
+        if (!c) {
+            result[cat] = null;
+        }
+        else {
+            result[cat] = { ...c, unlocked: entSet.has(c.callId) };
+        }
+    });
+    res.json(result);
+});
