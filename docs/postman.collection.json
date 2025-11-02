@@ -1,0 +1,330 @@
+{
+  "info": {
+    "name": "JustStock API (Render)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Complete collection for testing JustStock server on Render."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://juststock-server-q6c9.onrender.com" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "uid", "value": "" },
+    { "key": "callId", "value": "" },
+    { "key": "payoutId", "value": "" },
+    { "key": "orderId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+        },
+        {
+          "name": "GET /docs",
+          "request": { "method": "GET", "url": "{{baseUrl}}/docs" }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /auth/login (superadmin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', data.accessToken || '');",
+                  "pm.collectionVariables.set('refreshToken', data.refreshToken || '');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"robin@shaktirise.in\",\n  \"password\": \"12345678\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "POST /auth/signup (user)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.accessToken) pm.collectionVariables.set('accessToken', data.accessToken);",
+                  "if (data.refreshToken) pm.collectionVariables.set('refreshToken', data.refreshToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test{{$timestamp}}@example.com\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\",\n  \"mobile\": \"9999999999\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/signup"
+          }
+        },
+        {
+          "name": "POST /auth/refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.accessToken) pm.collectionVariables.set('accessToken', data.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": "{{baseUrl}}/auth/refresh"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "GET /users/me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.uid) pm.collectionVariables.set('uid', data.uid);"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/users/me" }
+        },
+        {
+          "name": "POST /users/register",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"referralCode\": \"\"\n}" },
+            "url": "{{baseUrl}}/users/register"
+          }
+        },
+        {
+          "name": "GET /users/me/tree",
+          "request": { "method": "GET", "url": "{{baseUrl}}/users/me/tree?page=1&limit=20" }
+        },
+        {
+          "name": "GET /users/me/wallet",
+          "request": { "method": "GET", "url": "{{baseUrl}}/users/me/wallet" }
+        },
+        {
+          "name": "GET /users/me/history/commissions",
+          "request": { "method": "GET", "url": "{{baseUrl}}/users/me/history/commissions?page=1&limit=20" }
+        }
+      ]
+    },
+    {
+      "name": "Calls",
+      "item": [
+        {
+          "name": "POST /admin/calls (create)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": [
+                "const data = pm.response.json();",
+                "if (data.callId) pm.collectionVariables.set('callId', data.callId);"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"NIFTY\",\n  \"title\": \"Test Call {{ $isoTimestamp }}\",\n  \"body\": \"Buy low, sell high\",\n  \"price\": 116\n}"
+            },
+            "url": "{{baseUrl}}/admin/calls"
+          }
+        },
+        {
+          "name": "GET /calls (browse)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/calls?page=1&limit=10" }
+        },
+        {
+          "name": "POST /calls/:callId/unlock",
+          "request": { "method": "POST", "url": "{{baseUrl}}/calls/{{callId}}/unlock" }
+        },
+        {
+          "name": "GET /calls/:callId",
+          "request": { "method": "GET", "url": "{{baseUrl}}/calls/{{callId}}" }
+        },
+        {
+          "name": "GET /history/calls",
+          "request": { "method": "GET", "url": "{{baseUrl}}/history/calls?page=1&limit=20" }
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "item": [
+        {
+          "name": "POST /wallet/topup/order",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": [
+                "const data = pm.response.json();",
+                "if (data.id) pm.collectionVariables.set('orderId', data.id);"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 500\n}" },
+            "url": "{{baseUrl}}/wallet/topup/order"
+          }
+        },
+        {
+          "name": "POST /me/withdraw",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 100\n}" },
+            "url": "{{baseUrl}}/me/withdraw"
+          }
+        },
+        {
+          "name": "GET /me/history/wallet",
+          "request": { "method": "GET", "url": "{{baseUrl}}/me/history/wallet?page=1&limit=20" }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "POST /payments/registration/order",
+          "request": { "method": "POST", "url": "{{baseUrl}}/payments/registration/order" }
+        },
+        {
+          "name": "POST /payments/renewal/order",
+          "request": { "method": "POST", "url": "{{baseUrl}}/payments/renewal/order" }
+        },
+        {
+          "name": "POST /payments/webhook (activation bypass)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"activation\",\n  \"testBypass\": true,\n  \"payload\": {\n    \"payment\": { \"entity\": { \"id\": \"pay_test_activation_{{ $timestamp }}\", \"amount\": 210000 } },\n    \"order\": { \"entity\": { \"notes\": { \"uid\": \"{{uid}}\" } } }\n  }\n}"
+            },
+            "url": "{{baseUrl}}/payments/webhook"
+          }
+        },
+        {
+          "name": "POST /payments/webhook (topup bypass)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"topup\",\n  \"testBypass\": true,\n  \"payload\": {\n    \"payment\": { \"entity\": { \"id\": \"pay_test_topup_{{ $timestamp }}\", \"amount\": 50000 } },\n    \"order\": { \"entity\": { \"notes\": { \"uid\": \"{{uid}}\" } } }\n  }\n}"
+            },
+            "url": "{{baseUrl}}/payments/webhook"
+          }
+        },
+        {
+          "name": "GET /me/history/subscriptions",
+          "request": { "method": "GET", "url": "{{baseUrl}}/me/history/subscriptions?page=1&limit=20" }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "GET /admin/dashboard",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/dashboard" }
+        },
+        {
+          "name": "GET /admin/users",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/users?page=1&limit=20" }
+        },
+        {
+          "name": "PATCH /admin/users/:uid/status",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"active\"\n}" },
+            "url": "{{baseUrl}}/admin/users/{{uid}}/status"
+          }
+        },
+        {
+          "name": "GET /admin/commissions",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/commissions?page=1&limit=20" }
+        },
+        {
+          "name": "GET /admin/payouts",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/payouts?page=1&limit=20" }
+        },
+        {
+          "name": "PATCH /admin/payouts/:id -> paid",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"paid\",\n  \"notes\": \"test payout\"\n}" },
+            "url": "{{baseUrl}}/admin/payouts/{{payoutId}}"
+          }
+        },
+        {
+          "name": "POST /admin/seed/demo-users",
+          "request": { "method": "POST", "url": "{{baseUrl}}/admin/seed/demo-users" }
+        },
+        {
+          "name": "POST /admin/users/special",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Special User\",\n  \"email\": \"special{{ $timestamp }}@example.com\",\n  \"mobile\": \"9999999999\"\n}" },
+            "url": "{{baseUrl}}/admin/users/special"
+          }
+        },
+        {
+          "name": "POST /admin/users/demo",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Demo User\",\n  \"email\": \"demo{{ $timestamp }}@example.com\",\n  \"mobile\": \"9999999999\"\n}" },
+            "url": "{{baseUrl}}/admin/users/demo"
+          }
+        }
+      ]
+    }
+  ]
+}
+

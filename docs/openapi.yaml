@@ -4,12 +4,64 @@ info:
   version: 0.1.0
 servers:
   - url: http://localhost:8080
+  - url: https://juststock-server-q6c9.onrender.com
 paths:
   /health:
     get:
       summary: Healthcheck
       responses:
         '200': { description: OK }
+
+  /auth/signup:
+    post:
+      summary: Signup with email/password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                confirmPassword: { type: string, minLength: 8 }
+                mobile: { type: string }
+              required: [name, email, password, confirmPassword, mobile]
+      responses:
+        '201': { description: Tokens }
+
+  /auth/login:
+    post:
+      summary: Login with email/password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+              required: [email, password]
+      responses:
+        '200': { description: Tokens }
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken: { type: string }
+              required: [refreshToken]
+      responses:
+        '200': { description: Access token }
+
   /auth/request-otp:
     post:
       summary: Request login OTP
@@ -23,6 +75,7 @@ paths:
               required: [email]
       responses:
         '200': { description: Sent }
+
   /auth/verify-otp:
     post:
       summary: Verify OTP and issue tokens
@@ -38,11 +91,19 @@ paths:
               required: [email, code]
       responses:
         '200': { description: Tokens }
+
   /calls:
     get:
       summary: List advisory calls with unlocked flag
       responses:
         '200': { description: OK }
+
+  /calls/latest5:
+    get:
+      summary: Latest one message per category (NIFTY, BANKNIFTY, SENSEX, COMMODITY, OTHERS)
+      responses:
+        '200': { description: OK }
+
   /calls/{callId}:
     get:
       summary: Get a call if unlocked
@@ -53,6 +114,7 @@ paths:
           schema: { type: string }
       responses:
         '200': { description: OK }
+
   /calls/{callId}/unlock:
     post:
       summary: Unlock a call
@@ -64,25 +126,73 @@ paths:
       responses:
         '200': { description: Unlocked }
         '402': { description: Insufficient funds }
+
+  /users/me:
+    get:
+      summary: Get current user profile
+      responses:
+        '200': { description: OK }
+
+  /users/me/wallet:
+    get:
+      summary: Get wallet balances
+      responses:
+        '200': { description: OK }
+
   /payments/registration/order:
     post:
       summary: Create registration order (₹2100)
       responses:
         '200': { description: Order }
+
   /payments/renewal/order:
     post:
       summary: Create renewal order (₹1000)
       responses:
         '200': { description: Order }
+
   /payments/webhook:
     post:
       summary: Razorpay webhook capture
       responses:
         '200': { description: OK }
+
+  /wallet/topup/order:
+    post:
+      summary: Create wallet topup order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount: { type: integer, minimum: 1 }
+              required: [amount]
+      responses:
+        '200': { description: Order }
+
+  /me/history/wallet:
+    get:
+      summary: Wallet transaction history
+      responses:
+        '200': { description: OK }
+
+  /history/calls:
+    get:
+      summary: Unlocked calls history
+      responses:
+        '200': { description: OK }
+
+  /users/me/history/commissions:
+    get:
+      summary: Commissions history
+      responses:
+        '200': { description: OK }
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-

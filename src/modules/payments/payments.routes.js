@@ -36,10 +36,16 @@ const webhookSchema = zod_1.z.object({
 });
 router.post('/payments/webhook', (0, validate_1.validate)(webhookSchema), async (req, res) => {
     const { body } = req;
-    const type = body.type || 'activation';
+    const notes = body.payload?.payment?.entity?.notes || body.payload?.order?.entity?.notes || {};
+    let type = body.type || 'activation';
+    if (!body.type && notes?.purpose) {
+        if (notes.purpose === 'topup' || notes.purpose === 'call_unlock') type = 'topup';
+        else if (notes.purpose === 'renewal') type = 'renewal';
+        else if (notes.purpose === 'activation') type = 'activation';
+    }
     const paymentId = body.payload?.payment?.entity?.id || body.payload?.payment_id || 'pay_test_' + Date.now();
     const amount = Math.round((body.payload?.payment?.entity?.amount || 0) / 100);
-    const uid = body.payload?.notes?.uid || body.payload?.order?.entity?.notes?.uid;
+    const uid = notes?.uid;
     if (!body.testBypass && !(0, razorpay_1.verifySignatureStubOk)()) {
         return res.status(400).json({ error: 'signature_verification_failed_or_stub_keys_missing' });
     }
